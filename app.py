@@ -7,22 +7,33 @@ import plotly.graph_objects as go
 # Page configuration
 st.set_page_config(page_title="Glidepath Simulator", page_icon="📈", layout="wide")
 
-st.title("📈 Pension Glidepath Simulator")
+st.title("Pension Glidepath Simulator")
 st.markdown("Adjust the parameters to model how de-risking strategies affect the outcome of a pension pot")
 
-# Use columns for a cleaner layout
-col1, col2 = st.columns(2)
+st.markdown("Currently this simulator takes data for 2 funds:")
+st.markdown("- **[^GSPC](https://finance.yahoo.com/markets/world-indices/)**: a fund which tracks the S&P 500. This is the equity fund in the simulator.")
+st.markdown("- **[^FVX](https://finance.yahoo.com/markets/bonds/)**: a fund which tracks the US 5 Year Treasury bonds. This is the bond fund in the simulator. ")
 
+
+
+st.divider()
+
+st.markdown("#### Set your parameters")
+
+# Use columns for a cleaner layout
+col1, col2, col3 = st.columns(3)
+
+# first section - contributions, years to retirement, and target weight
 with col1:
-    # Numeric inputs as integers
     contributions = st.number_input(
-        "Monthly contribution",
+        "Monthly contribution in £",
         min_value=0,
         value=500,
         max_value=5000,
         step=50
     )
 
+with col2:
     derisking_years = st.number_input(
         "Derisking Years (years before retirement)",
         min_value=0,
@@ -30,10 +41,22 @@ with col1:
         step=1
     )
 
-with col2:
+with col3:
+    target_weight = st.number_input(
+        "Derisking Years (years before retirement)",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.2,
+        step=0.05
+    )
+
+# section for the date inputs
+col4, col5 = st.columns(2)
+with col4:
     # Date inputs
     start_date = st.date_input("Start Date", value=datetime(1990, 1, 1))
     start_date = pd.to_datetime(start_date)
+with col5:
     retirement_date = st.date_input("Retirement Date", value=datetime(2023, 1, 1))
     retirement_date = pd.to_datetime(retirement_date)
 
@@ -52,7 +75,7 @@ pension = Pension(start_date, retirement_date, contributions)
 pension.load_data(fund_data)
 
 # set derisking strategy
-pension.derisk_strategy(0.2, derisking_years)
+pension.derisk_strategy(target_weight, derisking_years)
 
 # accumulate pension
 df_accum = pension.accumulate()
@@ -62,13 +85,16 @@ ending_value = round(df_accum.tail(1)["portfolio_value"].item())
 total_cont = round(df_accum["cont"].sum())
 return_perc = ((round(ending_value / total_cont, 4)) - 1) * 100
 
+st.divider()
+st.markdown("#### What your pension looks like")
+
 # create layout for the headline figures and graph
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.metric("Pension pot end value: ", ending_value)
-    st.metric("Total contributions: ", total_cont)
-    st.metric("Return as percentage: ", return_perc)
+    st.metric("Pension pot end value: ", f"£{ending_value:,}")
+    st.metric("Total contributions: ", f"£{total_cont:,}")
+    st.metric("Return as percentage: ", f"{return_perc}%")
 
 with col2:
 
@@ -99,14 +125,14 @@ with col2:
 
         # Primary Y-Axis (Portfolio Value)
         yaxis=dict(
-            title="Value ($)",
+            title="Value (£)",
             showgrid=False,  # This removes the horizontal lines
             zeroline=False  # Optional: removes the thicker line at y=0
         ),
 
         # Secondary Y-Axis (Bond Weight)
         yaxis2=dict(
-            title="Bond Weight (%)",
+            title="Equity Weight (%)",
             overlaying="y",
             side="right",
             range=[0, 1],
